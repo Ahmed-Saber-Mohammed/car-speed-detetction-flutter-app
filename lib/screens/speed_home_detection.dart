@@ -1,6 +1,7 @@
 import 'dart:developer'; // Import the developer package
 import 'package:flutter/material.dart';
 
+import 'camera_page.dart';
 import 'detected_cars_page.dart';
 
 
@@ -29,8 +30,15 @@ class _SpeedDetectionHomeState extends State<SpeedDetectionHome> {
     );
   }
 
-  void _recordVideo() {
-    log("Playing Video"); // Use log()
+  void _recordVideo() async {
+    final videoPath = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => CameraPage()),
+    );
+
+    if (videoPath != null) {
+      log("Video saved at: $videoPath");
+    }
   }
 
   @override
