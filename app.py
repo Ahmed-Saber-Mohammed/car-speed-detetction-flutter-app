@@ -26,7 +26,7 @@ frameCounter = 0
 mark_line = 250  # Single detection line
 markGap = 10  # Distance in meters for speed calculation
 fpsFactor = 3  # Speed adjustment factor
-speedLimit = 30  # Speed limit in km/h
+speedLimit = 20  # Speed limit in km/h
 crossingTime = {}  # Store crossing times for cars
 
 # Create directory for saving overspeeding cars
@@ -142,6 +142,16 @@ def detect_and_track():
             break
 
     cv2.destroyAllWindows()
+
+@app.route('/set_speed_limit', methods=['POST'])
+def set_speed_limit():
+    global speedLimit
+    try:
+        data = request.get_json()
+        speedLimit = int(data['max_speed'])  # Update global variable
+        return {"message": "Speed limit updated", "speedLimit": speedLimit}, 200
+    except (KeyError, ValueError):
+        return {"error": "Invalid speed limit value"}, 400
 
 @app.route('/upload_video', methods=['POST'])
 def upload_video():

@@ -1,6 +1,6 @@
 import 'dart:developer'; // Import the developer package
 import 'package:flutter/material.dart';
-
+import 'package:dio/dio.dart';
 import 'camera_page.dart';
 import 'detected_cars_page.dart';
 
@@ -16,11 +16,36 @@ class SpeedDetectionHome extends StatefulWidget {
 class _SpeedDetectionHomeState extends State<SpeedDetectionHome> {
   final TextEditingController _maxSpeedController = TextEditingController();
 
+void _saveMaxSpeed() async {
+  String maxSpeed = _maxSpeedController.text;
 
-  void _saveMaxSpeed() {
-    String maxSpeed = _maxSpeedController.text;
-    log("Max Speed Saved: $maxSpeed"); // Use log() instead of print()
+  if (maxSpeed.isEmpty) {
+    log("Max Speed is empty");
+    return;
   }
+
+  final dio = Dio();
+  const String backendUrl = "http://172.30.103.210:5000/set_speed_limit"; // Update with your Flask server IP
+
+  try {
+    Response response = await dio.post(
+      backendUrl,
+      data: {"max_speed": maxSpeed},
+      options: Options(
+        headers: {"Content-Type": "application/json"},
+      ),
+    );
+
+    if (response.statusCode == 200) {
+      log("Speed limit updated: ${response.data}");
+    } else {
+      log("Failed to update speed limit. Status Code: ${response.statusCode}");
+    }
+  } catch (e) {
+    log("Error updating speed limit: $e");
+  }
+}
+
 
   void _openOverSpeedFolder() {
     // Navigate to the detected cars page

@@ -1,21 +1,20 @@
-import 'dart:io';
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:camera/camera.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart';
 
 class CameraPage extends StatefulWidget {
-  const CameraPage({super.key});
-
   @override
   _CameraPageState createState() => _CameraPageState();
 }
 
 class _CameraPageState extends State<CameraPage> {
-  CameraController? _cameraController;
-  List<CameraDescription>? _cameras;
-  bool _isRecording = false;
-  String? _videoPath;
+  CameraController? _controller;
+  bool _isStreaming = false;
+  Timer? _timer;
+  final Dio _dio = Dio();
+  final String _serverUrl = "http://172.30.103.210:5000/upload_video"; // Update IP
 
   @override
   void initState() {
@@ -24,62 +23,74 @@ class _CameraPageState extends State<CameraPage> {
   }
 
   Future<void> _initializeCamera() async {
-    _cameras = await availableCameras();
-    if (_cameras!.isNotEmpty) {
-      _cameraController = CameraController(_cameras!.first, ResolutionPreset.high);
-      await _cameraController!.initialize();
-      setState(() {});
+    final cameras = await availableCameras();
+    if (cameras.isNotEmpty) {
+      _controller = CameraController(cameras[0], ResolutionPreset.low);
+      await _controller!.initialize();
+      if (mounted) {
+        setState(() {});
+      }
     }
   }
 
-  Future<void> _startRecording() async {
-    if (_cameraController == null || !_cameraController!.value.isInitialized) return;
+  void _startStreaming() {
+    if (_controller == null || !_controller!.value.isInitialized) return;
 
-    final directory = await getTemporaryDirectory();
-    final videoPath = join(directory.path, "${DateTime.now()}.mp4");
-
-    await _cameraController!.startVideoRecording();
     setState(() {
-      _isRecording = true;
-      _videoPath = videoPath;
+      _isStreaming = true;
+    });
+
+    _timer = Timer.periodic(const Duration(milliseconds: 50), (timer) async {
+      if (!_isStreaming) {
+        timer.cancel();
+        return;
+      }
+
+      try {
+        final XFile file = await _controller!.takePicture();
+        final Uint8List imageBytes = await file.readAsBytes();
+
+        FormData formData = FormData.fromMap({
+          "video": MultipartFile.fromBytes(imageBytes, filename: "frame.jpg"),
+        });
+
+        await _dio.post(_serverUrl, data: formData);
+      } catch (e) {
+        print("Error sending frame: $e");
+      }
     });
   }
 
-  Future<void> _stopRecording() async {
-    if (_cameraController == null || !_cameraController!.value.isRecordingVideo) return;
-
-    await _cameraController!.stopVideoRecording();
+  void _stopStreaming() {
     setState(() {
-      _isRecording = false;
+      _isStreaming = false;
     });
-
-    Navigator.pop(context as BuildContext, _videoPath); // Return video path to previous screen
+    _timer?.cancel();
   }
 
   @override
   void dispose() {
-    _cameraController?.dispose();
+    _stopStreaming();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Record Video")),
-      body: _cameraController == null || !_cameraController!.value.isInitialized
-          ? Center(child: CircularProgressIndicator())
-          : Stack(
+      appBar: AppBar(title: const Text("Camera Streaming")),
+      body: Column(
         children: [
-          CameraPreview(_cameraController!),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: FloatingActionButton(
-                onPressed: _isRecording ? _stopRecording : _startRecording,
-                backgroundColor: _isRecording ? Colors.red : Colors.green,
-                child: Icon(_isRecording ? Icons.stop : Icons.videocam),
-              ),
+          Expanded(
+            child: (_controller == null || !_controller!.value.isInitialized)
+                ? const Center(child: CircularProgressIndicator())
+                : CameraPreview(_controller!),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: ElevatedButton(
+              onPressed: _isStreaming ? _stopStreaming : _startStreaming,
+              child: Text(_isStreaming ? "Stop Streaming" : "Start Streaming"),
             ),
           ),
         ],
