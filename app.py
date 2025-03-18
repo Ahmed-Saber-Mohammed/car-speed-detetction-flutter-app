@@ -7,6 +7,7 @@ import time
 import os
 from datetime import datetime
 
+base_url = "http://172.30.103.210:5000" 
 app = Flask(__name__)
 
 # Load the car cascade classifier
@@ -33,6 +34,8 @@ crossingTime = {}  # Store crossing times for cars
 if not os.path.exists('overspeeding/cars/'):
     os.makedirs('overspeeding/cars/')
 
+overspeeding_cars = []  # Global list to store detected overspeeding cars
+
 def saveCar(carID, speed, frame, tx, ty, tw, th):
     """ Saves an image of an overspeeding car with speed info. """
     now = datetime.now()
@@ -46,7 +49,16 @@ def saveCar(carID, speed, frame, tx, ty, tw, th):
 
     # Save the image
     cv2.imwrite(filepath, car_image)
+
+    # Store in global list
+    overspeeding_cars.append({
+        "image_path": filepath,  # Send relative path
+        "speed": speed,
+        "date": now.strftime("%Y-%m-%d"),
+        "time": now.strftime("%H:%M:%S"),
+    })
     print(f"🚨 Car {carID} is OVERSPEEDING at {speed} km/h! Screenshot saved.")
+
 
 def estimateSpeed(timeDiff):
     """ Calculates speed based on time taken between crossings. """
@@ -73,7 +85,7 @@ def detect_and_track():
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # Detect cars every 30 frames
-        if frameCounter % 30 == 0:
+        if frameCounter % 20 == 0:
             cars = carCascade.detectMultiScale(gray, 1.1, 5, minSize=(24, 24))
 
             for (_x, _y, _w, _h) in cars:
@@ -163,7 +175,7 @@ def upload_video():
     frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
     if frame is None:
-        return "Failed to decode frame", 400
+        return f"Failed to decode base_url = {base_url} frame", 400
 
     frame = cv2.resize(frame, (640, 480))  # Resize for performance
 
@@ -171,6 +183,31 @@ def upload_video():
         latest_frame = frame  # Store latest frame
 
     return "Frame received", 200
+
+from flask import Flask, jsonify, send_from_directory
+import os
+
+app = Flask(__name__)
+
+@app.route('/overspeeding_cars', methods=['GET'])
+def get_overspeeding_cars(): 
+    image_folder = "overspeeding/cars/"
+
+    overspeeding_cars = []
+    for filename in os.listdir(image_folder):
+        if filename.endswith(".jpeg"):
+            overspeeding_cars.append({
+                "image_path": f"{base_url}/{image_folder}{filename}",  # ✅ Full URL
+                "speed": filename.split("_")[1] if "_" in filename else "Unknown",
+                "date": filename.split("-")[0] if "-" in filename else "Unknown",
+                "time": filename.split("-")[1] if "-" in filename else "Unknown",
+            })
+
+    return jsonify({"overspeeding_cars": overspeeding_cars})
+
+@app.route('/overspeeding/cars/<path:filename>')
+def serve_image(filename):
+    return send_from_directory("overspeeding/cars", filename)
 
 if __name__ == '__main__':
     threading.Thread(target=detect_and_track, daemon=True).start()

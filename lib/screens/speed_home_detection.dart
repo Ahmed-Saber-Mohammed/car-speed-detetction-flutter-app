@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'camera_page.dart';
 import 'detected_cars_page.dart';
 
+const String baseUrl = "http://172.30.103.210:5000";
 
 class SpeedDetectionHome extends StatefulWidget {
   const SpeedDetectionHome({super.key});
@@ -16,36 +17,36 @@ class SpeedDetectionHome extends StatefulWidget {
 class _SpeedDetectionHomeState extends State<SpeedDetectionHome> {
   final TextEditingController _maxSpeedController = TextEditingController();
 
-void _saveMaxSpeed() async {
-  String maxSpeed = _maxSpeedController.text;
+  void _saveMaxSpeed() async {
+    String maxSpeed = _maxSpeedController.text;
 
-  if (maxSpeed.isEmpty) {
-    log("Max Speed is empty");
-    return;
-  }
-
-  final dio = Dio();
-  const String backendUrl = "http://172.30.103.210:5000/set_speed_limit"; // Update with your Flask server IP
-
-  try {
-    Response response = await dio.post(
-      backendUrl,
-      data: {"max_speed": maxSpeed},
-      options: Options(
-        headers: {"Content-Type": "application/json"},
-      ),
-    );
-
-    if (response.statusCode == 200) {
-      log("Speed limit updated: ${response.data}");
-    } else {
-      log("Failed to update speed limit. Status Code: ${response.statusCode}");
+    if (maxSpeed.isEmpty) {
+      log("Max Speed is empty");
+      return;
     }
-  } catch (e) {
-    log("Error updating speed limit: $e");
-  }
-}
 
+    final dio = Dio();
+    const String backendUrl =
+        "$baseUrl/set_speed_limit"; // Update with your Flask server IP
+
+    try {
+      Response response = await dio.post(
+        backendUrl,
+        data: {"max_speed": maxSpeed},
+        options: Options(headers: {"Content-Type": "application/json"}),
+      );
+
+      if (response.statusCode == 200) {
+        log("Speed limit updated: ${response.data}");
+      } else {
+        log(
+          "Failed to update speed limit. Status Code: ${response.statusCode}",
+        );
+      }
+    } catch (e) {
+      log("Error updating speed limit: $e");
+    }
+  }
 
   void _openOverSpeedFolder() {
     // Navigate to the detected cars page
@@ -90,19 +91,24 @@ void _saveMaxSpeed() async {
               cursorColor: Colors.white, // Cursor color changed to white
               decoration: InputDecoration(
                 labelText: "Enter Max Speed",
-                labelStyle:
-                const TextStyle(color: Color.fromARGB(255, 177, 18, 7)),
+                labelStyle: const TextStyle(
+                  color: Color.fromARGB(255, 177, 18, 7),
+                ),
                 border: const OutlineInputBorder(
-                  borderSide:
-                  BorderSide(color: Color.fromARGB(255, 177, 18, 7)),
+                  borderSide: BorderSide(
+                    color: Color.fromARGB(255, 177, 18, 7),
+                  ),
                 ),
                 enabledBorder: const OutlineInputBorder(
-                  borderSide:
-                  BorderSide(color: Color.fromARGB(255, 177, 18, 7)),
+                  borderSide: BorderSide(
+                    color: Color.fromARGB(255, 177, 18, 7),
+                  ),
                 ),
                 focusedBorder: const OutlineInputBorder(
                   borderSide: BorderSide(
-                      color: Color.fromARGB(255, 177, 18, 7), width: 2),
+                    color: Color.fromARGB(255, 177, 18, 7),
+                    width: 2,
+                  ),
                 ),
                 suffixIcon: Padding(
                   padding: const EdgeInsets.only(right: 10), // Adjust spacing
@@ -112,13 +118,20 @@ void _saveMaxSpeed() async {
                       Container(
                         width: 2, // Line width
                         height: 24, // Line height
-                        color: const Color.fromARGB(255, 82, 8, 8), // Line color
+                        color: const Color.fromARGB(
+                          255,
+                          82,
+                          8,
+                          8,
+                        ), // Line color
                         margin: const EdgeInsets.symmetric(horizontal: 8),
                       ),
                       const Text(
                         "km/h",
                         style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -148,7 +161,8 @@ void _saveMaxSpeed() async {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min, // Ensures column only takes needed space
+        mainAxisSize:
+            MainAxisSize.min, // Ensures column only takes needed space
         children: [
           // Push button slightly higher for better visibility
           SizedBox(height: MediaQuery.of(context).size.height * 0.1),
@@ -169,7 +183,6 @@ void _saveMaxSpeed() async {
           ),
 
           SizedBox(height: 10), // Space between button and text
-
           // Text Below the Button
           Text(
             "Start detecting", // User-friendly text
@@ -181,7 +194,6 @@ void _saveMaxSpeed() async {
           ),
         ],
       ),
-
     );
   }
 }

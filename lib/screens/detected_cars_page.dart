@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/detected_model.dart';
 import 'car_detail_page.dart'; // Import the detail page
+import 'package:dio/dio.dart';
+
+String baseUrl = "http://172.30.103.210:5000"; // Your Flask server URL
 
 class DetectedCarsPage extends StatefulWidget {
   const DetectedCarsPage({super.key});
@@ -10,7 +13,40 @@ class DetectedCarsPage extends StatefulWidget {
 }
 
 class _DetectedCarsPageState extends State<DetectedCarsPage> {
-  List<DetectedCar> carsList = List.from(detectedCars);
+  List<DetectedCar> carsList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchDetectedCars(); // Fetch cars from the backend on page load
+  }
+
+  Future<void> fetchDetectedCars() async {
+    try {
+      var response = await Dio().get("$baseUrl/overspeeding_cars");
+
+      if (response.statusCode == 200) {
+        List<dynamic> fetchedCars = response.data["overspeeding_cars"] ?? [];
+
+        setState(() {
+          carsList =
+              fetchedCars.map((car) {
+                return DetectedCar(
+                  imageUrl:
+                      car["image_path"] != null
+                          ? car["image_path"]
+                          : "$baseUrl/default.jpg", 
+                  speed: car["speed"].toString(),
+                  data: car["date"] ?? "Unknown",
+                  time: car["time"] ?? "Unknown",
+                );
+              }).toList();
+        });
+      }
+    } catch (e) {
+      print("Error fetching detected cars: $e");
+    }
+  }
 
   void _deleteCar(int index) {
     setState(() {
@@ -29,68 +65,78 @@ class _DetectedCarsPageState extends State<DetectedCarsPage> {
         centerTitle: true,
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(
-          color:  Colors.white54, // Change back button color to red
+          color: Colors.white54, // Change back button color to red
         ),
       ),
       backgroundColor: Colors.black,
-      body: carsList.isEmpty
-          ? const Center(
-        child: Text(
-          "No detected cars",
-          style: TextStyle(color: Colors.white54, fontSize: 18),
-        ),
-      )
-          : ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: carsList.length,
-        itemBuilder: (context, index) {
-          final car = carsList[index];
+      body:
+          carsList.isEmpty
+              ? const Center(
+                child: Text(
+                  "No detected cars",
+                  style: TextStyle(color: Colors.white54, fontSize: 18),
+                ),
+              )
+              : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: carsList.length,
+                itemBuilder: (context, index) {
+                  final car = carsList[index];
 
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CarDetailPage(car: car),
-                ),
-              );
-            },
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1C1C1C), Color(0xFF630D14)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(2, 4),
-                  ),
-                ],
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => CarDetailPage(car: car),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1C1C1C), Color(0xFF630D14)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(2, 4),
+                          ),
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        title: Text(
+                          "Speed: ${car.speed}",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(
+                          "Date: ${car.data}\nTime: ${car.time}",
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 15,
+                          ),
+                        ),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _deleteCar(index),
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                title: Text(
-                  "Speed: ${car.speed}",
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  "Date: ${car.data}\nTime: ${car.time}",
-                  style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 15),
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => _deleteCar(index),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 }

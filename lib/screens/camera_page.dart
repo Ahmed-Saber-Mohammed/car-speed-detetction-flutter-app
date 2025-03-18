@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+String baseUrl = "http://172.30.103.210:5000"; // Your Flask server URL
 
 class CameraPage extends StatefulWidget {
   @override
@@ -14,7 +15,7 @@ class _CameraPageState extends State<CameraPage> {
   bool _isStreaming = false;
   Timer? _timer;
   final Dio _dio = Dio();
-  final String _serverUrl = "http://172.30.103.210:5000/upload_video"; // Update IP
+  final String _serverUrl = "$baseUrl/upload_video"; // Update IP
 
   @override
   void initState() {
