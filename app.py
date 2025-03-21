@@ -70,10 +70,15 @@ if not os.path.exists('overspeeding/cars/'):
 
 overspeeding_cars = []  # Global list to store detected overspeeding cars
 
+import cv2
+from datetime import datetime
+
+overspeeding_cars = []  # Store detected cars globally
+
 def saveCar(carID, speed, frame, tx, ty, tw, th):
-    """ Saves an image of an overspeeding car with speed info. """
+    """ Saves an image of an overspeeding car with speed info in the filename. """
     now = datetime.now()
-    filename = now.strftime("%d-%m-%Y-%H-%M-%S-%f")
+    filename = now.strftime(f"%d-%m-%Y-%H-%M-{speed}")  # Add speed to filename
     filepath = f'overspeeding/cars/{filename}.jpeg'
 
     # Draw red box and overlay speed on the image
@@ -81,16 +86,18 @@ def saveCar(carID, speed, frame, tx, ty, tw, th):
     cv2.rectangle(frame, (tx, ty), (tx + tw, ty + th), (0, 0, 255), 3)
     cv2.putText(frame, f"OVERSPEEDING {speed} km/h", (tx, ty - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
 
-    # Save the image
+    # Save the image with speed in the filename
     cv2.imwrite(filepath, car_image)
+
     # Store in global list
     overspeeding_cars.append({
         "image_path": filepath,  # Send relative path
         "speed": speed,
-        "date": now.strftime("%Y-%m-%d"),
-        "time": now.strftime("%H:%M:%S"),
+        "date": now.strftime("%d/%m/%Y"),
+        "time": now.strftime("%H:%M"),
     })
-    print(f"🚨 Car {carID} is OVERSPEEDING at {speed} km/h! Screenshot saved.")
+
+    print(f"🚨 Car {carID} is OVERSPEEDING at {speed} km/h! Screenshot saved as {filename}.jpeg")
 
 def estimateSpeed(timeDiff):
     """ Calculates speed based on time taken between crossings. """
@@ -232,16 +239,24 @@ def upload_video():
 @app.route('/overspeeding_cars', methods=['GET'])
 def get_overspeeding_cars(): 
     image_folder = "overspeeding/cars/"
-
     overspeeding_cars = []
+
     for filename in os.listdir(image_folder):
         if filename.endswith(".jpeg"):
-            overspeeding_cars.append({
-                "image_path": f"{base_url}/{image_folder}{filename}",  # ✅ Full URL
-                "speed": filename.split("_")[1] if "_" in filename else "Unknown",
-                "date": filename.split("-")[0] if "-" in filename else "Unknown",
-                "time": filename.split("-")[1] if "-" in filename else "Unknown",
-            })
+            try:
+                parts = filename.replace(".jpeg", "").split("-")
+                if len(parts) == 6:  # Ensure correct filename format
+                    day, month, year, hour, minute, speed = parts
+                    overspeeding_cars.append({
+                        "image_path": f"{base_url}/{image_folder}{filename}",
+                        "speed": f"{speed} km/h",  # Ensure correct display
+                        "date": f"{day}/{month}/{year}",
+                        "time": f"{hour}:{minute}",
+                    })
+                else:
+                    print(f"⚠️ Invalid filename format: {filename}")  # Debugging
+            except Exception as e:
+                print(f"❌ Error parsing filename {filename}: {e}")
 
     return jsonify({"overspeeding_cars": overspeeding_cars})
 
