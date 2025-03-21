@@ -7,6 +7,8 @@ import dlib
 import time
 import os
 from datetime import datetime
+import requests
+
 
 base_url = "http://172.30.103.210:5000" 
 
@@ -31,6 +33,36 @@ markGap = 10  # Distance in meters for speed calculation
 fpsFactor = 3  # Speed adjustment factor
 speedLimit = 30  # Speed limit in km/h
 crossingTime = {}  # Store crossing times for cars
+
+speed_limit_lock = threading.Lock()  # Lock to prevent race conditions
+
+def update_speed_limit():
+    """ Fetches the latest speed limit from an external API and updates the global variable. """
+    global speedLimit
+    api_url = f"{base_url}/setspeedlimit"  # Replace with actual API URL
+
+    while True:
+        try:
+            response = requests.get(api_url, timeout=5)  # Fetch new speed limit
+            if response.status_code == 200:
+                data = response.json()
+                print(f"🔍 API Response (Fetched Speed): {data}")  # Log API response
+
+                if "max_speed" in data:
+                    new_limit = int(data["max_speed"])  # Extract speed limit
+
+                    if not (10 <= new_limit <= 200):  # Ensure valid range
+                        print(f"🚨 Ignored invalid speed limit: {new_limit}")
+                        continue
+                    
+                    with speed_limit_lock:  # Ensure safe update
+                        if new_limit != speedLimit:
+                            speedLimit = new_limit
+                            print(f"✅ Updated speed limit to {speedLimit} km/h")
+        except requests.RequestException as e:
+            print(f"⚠️ Failed to fetch speed limit: {e}")
+
+        time.sleep(60)  # Check for updates every 60 seconds
 
 # Create directory for saving overspeeding cars
 if not os.path.exists('overspeeding/cars/'):
@@ -156,6 +188,27 @@ def detect_and_track():
 
     cv2.destroyAllWindows()
 
+@app.route('/set_speed_limit', methods=['POST'])
+def set_speed_limit():
+    global speedLimit
+    try:
+        data = request.get_json()
+        print(f"📥 Received API request: {data}")  # Debugging print
+
+        new_limit = int(data['max_speed'])  # Extract speed limit
+        if not (10 <= new_limit <= 200):  # Validate range
+            print(f"🚨 Rejected invalid speed limit: {new_limit}")
+            return {"error": "Invalid speed limit range (must be between 10 and 200 km/h)"}, 400
+        
+        with speed_limit_lock:  # Use lock to safely update
+            speedLimit = new_limit
+
+        print(f"✅ Speed limit manually set to {speedLimit} km/h")
+        return {"message": "Speed limit updated", "speedLimit": speedLimit}, 200
+    except (KeyError, ValueError):
+        print("❌ Invalid request format")
+        return {"error": "Invalid speed limit value"}, 400
+
 @app.route('/upload_video', methods=['POST'])
 def upload_video():
     """ Receives video frames and updates the latest frame in memory. """
@@ -196,6 +249,8 @@ def get_overspeeding_cars():
 def serve_image(filename):
     return send_from_directory("overspeeding/cars", filename)
 
+
 if __name__ == '__main__':
+    threading.Thread(target=update_speed_limit, daemon=True).start()  # Start speed limit updater
     threading.Thread(target=detect_and_track, daemon=True).start()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)  # Prevent duplicate threads
