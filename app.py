@@ -11,11 +11,12 @@ import asyncio
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
+
 # Load environment variables from .env file
 load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-BUCKET_NAME = os.getenv("BUCKET_NAME", "your-bucket-name")  # Default bucket
+BUCKET_NAME = os.getenv("BUCKET_NAME", "overspeeding-cars-images")  # Default bucket
 
 if not all([SUPABASE_URL, SUPABASE_KEY, BUCKET_NAME]):
     raise ValueError("Supabase credentials not found in .env")
@@ -49,6 +50,7 @@ speedLimit = 30  # Speed limit in km/h
 crossingTime = {}  # Store crossing times for cars
 
 speed_limit_lock = threading.Lock()  # Lock to prevent race conditions
+overspeeding_cars_lock = threading.Lock()
 
 # Global list to store detected overspeeding cars (now stores URLs)
 overspeeding_cars = []
@@ -85,7 +87,7 @@ def update_speed_limit():
 async def saveCar(carID, speed, frame, tx, ty, tw, th):
     """Saves a cropped image of an overspeeding car to Supabase storage."""
     now = datetime.now()
-    filename = now.strftime(f"%d-%m-%Y-%H-%M-{speed}")
+    filename = now.strftime(f"%d-%m-%Y-%H-%M-%S-{speed}")
     image_filename = f"{filename}.jpeg"
 
     try:
@@ -136,19 +138,22 @@ async def saveCar(carID, speed, frame, tx, ty, tw, th):
                 "contentType": "image/jpeg",
             },
         )  # Set contentType
+        print(response.__dict__)  # Show all attributes and values
 
-        if response.status_code == 200:
-            # Construct the public URL
-            image_url = supabase.storage.from_(BUCKET_NAME).get_public_url(image_filename)
 
-            print(
-                f"🚨 Car {carID} is OVERSPEEDING at {speed} km/h!  Cropped image "
-                f"uploaded to Supabase: {image_url}"
-            )
-            return image_url  # Return the URL
-        else:
-            print(f"Error uploading cropped image: {response.status_code} - {response.error}")
-            return None  # Indicate failure
+        if hasattr(response, 'full_path') and response.full_path:
+          print("Upload successful:", response.full_path)
+        BASE_IMAGE_URL=f"{SUPABASE_URL}/storage/v1/object/public/"
+        image_url = f"{BASE_IMAGE_URL}{response.full_path}"
+
+        overspeeding_cars.append({
+         "image_path": image_url,  # Send relative path
+         "speed": speed,
+         "date": now.strftime("%d/%m/%Y"),
+         "time": now.strftime("%H:%M:%S"),
+     })
+        print(f"🔵 Appending car to list: {image_url}")
+        return image_url  # Return the URL
 
     except Exception as e:
         print(f"An error occurred during cropping/upload: {e}")
@@ -157,7 +162,8 @@ async def saveCar(carID, speed, frame, tx, ty, tw, th):
 def estimateSpeed(timeDiff):
     """Calculates speed based on time taken between crossings."""
     if timeDiff > 0:  # Avoid division by zero
-        speed = round((markGap / timeDiff) * fpsFactor * 3.6, 2)  # Convert to km/h
+        speed = min(round((markGap / timeDiff) * fpsFactor * 3.6, 2), 220)
+  # Convert to km/h and limit to 220 km/h
         return speed
     return 0
 
@@ -257,26 +263,7 @@ def detect_and_track():
 
                     # Highlight overspeeding cars in red and save screenshots
                     if speed > speedLimit:
-                        loop = asyncio.new_event_loop()  # Create an event loop
-                        asyncio.set_event_loop(loop)  # Set the current event loop
-                        image_url = loop.run_until_complete(saveCar(carID, speed, frame, tx, ty, tw, th))
-                        loop.close()  # Close the loop
-
-                        if image_url:
-                            with speed_limit_lock:
-                                overspeeding_cars.append(
-                                    {
-                                        "image_url": image_url,
-                                        "speed": speed,
-                                        "date": datetime.now().strftime("%d/%m/%Y"),
-                                        "time": datetime.now().strftime("%H:%M"),
-                                    }
-                                )
-                                print(
-                                    f"Added overspeeding car to list: {overspeeding_cars[-1]}"
-                                )  # Debug
-                        else:
-                            print("Failed to save image to Supabase.")
+                        image_url = asyncio.run(saveCar(carID, speed, frame, tx, ty, tw, th))
 
                     # Remove car from tracking after speed calculation
                     del crossingTime[carID]
@@ -346,6 +333,7 @@ def get_overspeeding_cars():
 
 
 if __name__ == "__main__":
+    print(overspeeding_cars)
     threading.Thread(target=update_speed_limit, daemon=True).start()  # Start speed limit updater
     threading.Thread(target=detect_and_track, daemon=True).start()
     app.run(

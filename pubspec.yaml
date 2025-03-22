@@ -36,6 +36,9 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_launcher_icons: ^0.14.3
   dio: ^5.8.0+1
+  flutter_dotenv: ^5.1.0
+  supabase_flutter: ^2.8.4
+
 
   #animated_text_kit: ^4.2.3
 

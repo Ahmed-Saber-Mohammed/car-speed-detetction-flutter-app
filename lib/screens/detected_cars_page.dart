@@ -25,17 +25,21 @@ class _DetectedCarsPageState extends State<DetectedCarsPage> {
     try {
       var response = await Dio().get("$baseUrl/overspeeding_cars");
 
+      // print("Response status: ${response.statusCode}");
+      // print("Response data: ${response.data}");
       if (response.statusCode == 200) {
         List<dynamic> fetchedCars = response.data["overspeeding_cars"] ?? [];
 
         setState(() {
           carsList =
               fetchedCars.map((car) {
+                print("Car data: $car");
+
                 return DetectedCar(
                   imageUrl:
                       car["image_path"] != null
                           ? car["image_path"]
-                          : "$baseUrl/default.jpg", 
+                          : "$baseUrl/default.jpg",
                   speed: car["speed"].toString(),
                   data: car["date"] ?? "Unknown",
                   time: car["time"] ?? "Unknown",
