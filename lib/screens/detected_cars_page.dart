@@ -25,10 +25,11 @@ class _DetectedCarsPageState extends State<DetectedCarsPage> {
     try {
       var response = await Dio().get("$baseUrl/overspeeding_cars");
 
-      // print("Response status: ${response.statusCode}");
-      // print("Response data: ${response.data}");
+      print("Response status: ${response.statusCode}");
+      print("Response data: ${response.data}");
       if (response.statusCode == 200) {
-        List<dynamic> fetchedCars = response.data["overspeeding_cars"] ?? [];
+        List<dynamic> fetchedCars =
+            response.data; // Since the API returns a list directly
 
         setState(() {
           carsList =
@@ -36,16 +37,22 @@ class _DetectedCarsPageState extends State<DetectedCarsPage> {
                 print("Car data: $car");
 
                 return DetectedCar(
+                  id: car["id"] as int,
                   imageUrl:
                       car["image_path"] != null
                           ? car["image_path"]
                           : "$baseUrl/default.jpg",
-                  speed: car["speed"].toString(),
-                  data: car["date"] ?? "Unknown",
+                  speed:
+                      (car["speed"] as num)
+                          .toDouble(), // Fix: Ensure speed is double
+
+                  date: car["date"] ?? "Unknown",
                   time: car["time"] ?? "Unknown",
                 );
               }).toList();
         });
+      } else {
+        print("Error: Status code ${response.statusCode}");
       }
     } catch (e) {
       print("Error fetching detected cars: $e");
@@ -126,7 +133,7 @@ class _DetectedCarsPageState extends State<DetectedCarsPage> {
                           ),
                         ),
                         subtitle: Text(
-                          "Date: ${car.data}\nTime: ${car.time}",
+                          "Date: ${car.date}\nTime: ${car.time}",
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.8),
                             fontSize: 15,

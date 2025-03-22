@@ -146,13 +146,19 @@ async def saveCar(carID, speed, frame, tx, ty, tw, th):
         BASE_IMAGE_URL=f"{SUPABASE_URL}/storage/v1/object/public/"
         image_url = f"{BASE_IMAGE_URL}{response.full_path}"
 
-        overspeeding_cars.append({
-         "image_path": image_url,  # Send relative path
-         "speed": speed,
-         "date": now.strftime("%d/%m/%Y"),
-         "time": now.strftime("%H:%M:%S"),
-     })
-        print(f"🔵 Appending car to list: {image_url}")
+        data = {
+                "image_path": image_url,
+                "speed": speed,
+                "date": now.strftime("%d/%m/%Y"),
+                "time": now.strftime("%H:%M:%S"),
+            }
+        insert_response = supabase.table("overspeeding_cars").insert(data).execute()
+
+        if insert_response.data:
+                print("✅ Data inserted into Supabase table:", insert_response.data)
+        else:
+                print("⚠️ Error inserting data into Supabase table:", insert_response)
+
         return image_url  # Return the URL
 
     except Exception as e:
@@ -326,10 +332,19 @@ def upload_video():
 
 @app.route("/overspeeding_cars", methods=["GET"])
 def get_overspeeding_cars():
-    """Returns a list of overspeeding cars with Supabase URLs."""
-    global overspeeding_cars  # Access the global list
+    response = supabase.table("overspeeding_cars").select("*").execute()
+    
+    # Debugging: Print the response
+    print(response)
 
-    return jsonify({"overspeeding_cars": overspeeding_cars})
+    # Ensure data is correctly returned
+    if isinstance(response, tuple):  # Handle tuple response
+        data, error = response
+        if error:
+            return jsonify({"error": str(error)}), 500
+        return jsonify(data), 200
+
+    return jsonify(response.data), 200  # Standard APIResponse handling
 
 
 if __name__ == "__main__":

@@ -55,7 +55,7 @@ class CarDetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                "Date: ${car.data}",
+                "Date: ${car.date}",
                 style: const TextStyle(color: Colors.white70, fontSize: 18),
               ),
               const SizedBox(height: 5),
