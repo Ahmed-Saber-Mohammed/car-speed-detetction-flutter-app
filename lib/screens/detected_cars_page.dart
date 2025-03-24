@@ -59,11 +59,32 @@ class _DetectedCarsPageState extends State<DetectedCarsPage> {
     }
   }
 
-  void _deleteCar(int index) {
-    setState(() {
-      carsList.removeAt(index);
-    });
+void _deleteCar(int index) async {
+  final car = carsList[index];
+  final int carId = car.id;
+
+  try {
+    print("🚗 Attempting to delete car ID: $carId");
+
+    var response = await Dio().delete("$baseUrl/overspeeding_cars/$carId");
+
+    if (response.statusCode == 200) {
+      print("✅ Car deleted from Supabase: $carId");
+
+      setState(() {
+        carsList.removeAt(index); // Remove from UI immediately
+      });
+
+      // Ensure full refresh by calling fetchDetectedCars()
+      fetchDetectedCars(); 
+    } else {
+      print("⚠️ Error deleting car from Supabase: ${response.data}");
+    }
+  } catch (e) {
+    print("⚠️ Failed to delete car: $e");
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -346,6 +346,58 @@ def get_overspeeding_cars():
 
     return jsonify(response.data), 200  # Standard APIResponse handling
 
+@app.route("/overspeeding_cars/<int:car_id>", methods=["DELETE"])
+def delete_overspeeding_car(car_id):
+    """Delete a car entry from the Supabase table and remove its image from storage."""
+    try:
+        # Fetch car entry from Supabase
+        response = supabase.table("overspeeding_cars").select("id", "image_path").execute()
+
+        if not response.data:
+            print("⚠️ No cars found in Supabase.")
+            return jsonify({"error": "Car not found"}), 404
+
+        print(f"📊 Current Cars in DB: {response.data}")
+
+        car_entry = next((item for item in response.data if item["id"] == car_id), None)
+        if not car_entry:
+            print(f"⚠️ Car ID {car_id} not found in Supabase.")
+            return jsonify({"error": "Car not found"}), 404
+
+        # Get image path from Supabase record
+        image_path = car_entry["image_path"]
+        print(f"🖼 Image Path: {image_path}")
+
+        # Get file path directly from response.full_path
+        response = supabase.storage.from_(BUCKET_NAME).list()
+        image_file = next(
+            (file["name"] for file in response if file["name"] in image_path),
+            None
+        )
+
+        if not image_file:
+            print(f"⚠️ Warning: Image file not found in storage: {image_path}")
+            return jsonify({"error": "Image file not found"}), 404
+
+        print(f"🗑 Deleting Image: {image_file}")
+
+        # Delete car record
+        delete_response = supabase.table("overspeeding_cars").delete().eq("id", car_id).execute()
+        if delete_response.data:
+            print(f"✅ Deleted car record: {delete_response.data}")
+        else:
+            print(f"⚠️ Failed to delete car record: {delete_response}")
+            return jsonify({"error": "Failed to delete car record"}), 500
+
+        # Delete image
+        storage_response = supabase.storage.from_(BUCKET_NAME).remove([image_file])
+        print(f"📦 Storage Delete Response: {storage_response}")
+
+        return jsonify({"message": "Car deleted successfully"}), 200
+
+    except Exception as e:
+        print(f"❌ Exception: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     print(overspeeding_cars)
