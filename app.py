@@ -25,7 +25,7 @@ if not all([SUPABASE_URL, SUPABASE_KEY, BUCKET_NAME]):
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Base URL (Consider making this configurable via .env)
-base_url = "http://172.30.103.210:5000"
+base_url = "https://f0-bg-removal.rivo.gallery"
 
 app = Flask(__name__)
 

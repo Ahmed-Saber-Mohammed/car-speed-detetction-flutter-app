@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-String baseUrl = "http://172.30.103.210:5000"; // Your Flask server URL
+String baseUrl = "https://f0-bg-removal.rivo.gallery"; // Your Flask server URL
 
 class CameraPage extends StatefulWidget {
   @override

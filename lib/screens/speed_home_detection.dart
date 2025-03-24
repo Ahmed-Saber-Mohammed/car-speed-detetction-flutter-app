@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import 'camera_page.dart';
 import 'detected_cars_page.dart';
 
-const String baseUrl = "http://172.30.103.210:5000";
+const String baseUrl = "https://f0-bg-removal.rivo.gallery";
 
 class SpeedDetectionHome extends StatefulWidget {
   const SpeedDetectionHome({super.key});

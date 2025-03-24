@@ -3,7 +3,7 @@ import '../models/detected_model.dart';
 import 'car_detail_page.dart'; // Import the detail page
 import 'package:dio/dio.dart';
 
-String baseUrl = "http://172.30.103.210:5000"; // Your Flask server URL
+String baseUrl = "https://f0-bg-removal.rivo.gallery"; // Your Flask server URL
 
 class DetectedCarsPage extends StatefulWidget {
   const DetectedCarsPage({super.key});
