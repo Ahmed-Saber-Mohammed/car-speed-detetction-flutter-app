@@ -227,8 +227,8 @@ def detect_and_track():
                     matchCarID = currentCarID
                     currentCarID += 1
 
-        # Draw single speed measurement line
-        cv2.line(frame, (0, mark_line), (frame.shape[1], mark_line), (0, 255, 255), 2)  # Yellow line
+        # # Draw single speed measurement line
+        # cv2.line(frame, (0, mark_line), (frame.shape[1], mark_line), (0, 255, 255), 2)  # Yellow line
 
         # Update trackers and draw bounding boxes
         carIDsToDelete = []
@@ -278,10 +278,10 @@ def detect_and_track():
         for carID in carIDsToDelete:
             del carTracker[carID]
 
-        # Display processed frame
-        cv2.imshow("Car Detection with Speed", frame)
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
+        # # Display processed frame
+        # cv2.imshow("Car Detection with Speed", frame)
+        # if cv2.waitKey(1) & 0xFF == ord("q"):
+        #     break
 
     cv2.destroyAllWindows()
 
